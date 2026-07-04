@@ -1,0 +1,69 @@
+"""Backend interface protocol (Section 9).
+
+The Compello core never imports ``torch``, ``tensorflow`` or ``jax`` directly.
+Instead it programs against this thin, explicit protocol. Each concrete backend
+(numpy reference, torch, tf, jax) implements it and registers itself.
+
+The protocol is deliberately small: it only contains the array primitives the
+penalty functions (Section 3.1) and array-level diagnostics (Section 5.2) need.
+The deep, framework-specific safety mechanisms (distributed collectives,
+backward hooks, optimizer momentum) are NOT part of this protocol -- they live
+in the per-backend adapters (Section 4/10), because they have no portable form.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Protocol, runtime_checkable
+
+
+@runtime_checkable
+class Backend(Protocol):
+    """Minimal array-operation surface used by the portable core.
+
+    A backend is any object exposing these attributes/methods. Implementations
+    may be module-like (e.g. a thin wrapper over ``jax.numpy``) or class
+    instances (the numpy reference backend). ``name`` identifies the backend
+    and ``is_available()`` reports whether its underlying library can be
+    imported in the current environment.
+    """
+
+    name: str
+
+    # --- lifecycle -------------------------------------------------------
+    @staticmethod
+    def is_available() -> bool:  # pragma: no cover - trivial
+        ...
+
+    # --- construction / inspection --------------------------------------
+    def asarray(self, x: Any) -> Any: ...
+    def to_float(self, x: Any) -> float:
+        """Collapse a scalar-like array to a Python float (for the controller)."""
+        ...
+    def is_native(self, x: Any) -> bool:
+        """True if ``x`` is a native array/tensor of this backend."""
+        ...
+    def shape(self, x: Any) -> tuple: ...
+
+    # --- elementwise -----------------------------------------------------
+    def maximum(self, a: Any, b: Any) -> Any: ...
+    def minimum(self, a: Any, b: Any) -> Any: ...
+    def abs(self, x: Any) -> Any: ...
+    def exp(self, x: Any) -> Any: ...
+    def log(self, x: Any) -> Any: ...
+    def clip(self, x: Any, lo: Any, hi: Any) -> Any: ...
+    def sigmoid(self, x: Any) -> Any: ...
+
+    # --- reductions ------------------------------------------------------
+    def sum(self, x: Any, axis: Any = None) -> Any: ...
+    def mean(self, x: Any, axis: Any = None) -> Any: ...
+    def relu(self, x: Any) -> Any: ...
+
+    # --- linear-algebra used by gradient surgery & lipschitz ------------
+    def dot(self, a: Any, b: Any) -> Any: ...
+    def norm(self, x: Any) -> Any: ...
+
+    # --- shape ops -------------------------------------------------------
+    def stack(self, xs: Any, axis: int = 0) -> Any: ...
+    def flatten(self, x: Any) -> Any: ...
+    def softmax(self, x: Any, axis: int = -1) -> Any: ...
+    def diff(self, x: Any, axis: int = -1) -> Any: ...

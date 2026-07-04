@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compello"
+version = "0.1.0"
+description = "A constraint-driven autotraining framework that steers models toward declared correctness properties."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Compello" }]
+keywords = ["machine-learning", "constrained-optimization", "training", "pytorch", "tensorflow", "jax"]
+
+# Core has ZERO hard runtime dependencies. It runs against whichever backend
+# is present. The numpy backend below is the reference/testing backend and is
+# an *optional* extra, not a core requirement.
+dependencies = []
+
+[project.optional-dependencies]
+# Reference/testing backend. numpy is not a deep-learning framework; it lets
+# the controller math, penalties, and diagnostics be exercised end-to-end
+# without torch / tensorflow / jax installed.
+numpy = ["numpy>=1.21"]
+config = ["pyyaml>=5.4"]
+# Deep-learning backends are entirely optional. Installing one does not pull
+# in the others.
+torch = ["torch>=2.0"]
+tensorflow = ["tensorflow>=2.12"]
+jax = ["jax>=0.4", "optax>=0.1"]
+dev = ["numpy>=1.21", "pyyaml>=5.4", "pytest>=7.0"]
+
+[project.scripts]
+trainlint = "compello.trainlint.cli:main"
+
+[project.entry-points."flake8.extension"]
+TL = "compello.trainlint.flake8_plugin:TrainlintFlake8Plugin"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["compello*"]
+
+[tool.setuptools.package-data]
+compello = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
